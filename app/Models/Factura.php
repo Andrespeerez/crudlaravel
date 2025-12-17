@@ -13,4 +13,9 @@ class Factura extends Model
     {
         return $this->belongsTo(Cliente::class, 'cliente_id');
     }
+
+    public function facturalineas()
+    {
+        return $this->hasMany(Facturalinea::class);
+    }
 }

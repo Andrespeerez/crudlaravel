@@ -40,6 +40,7 @@
                 <td>{{ $factura->importe }}</td>
                 <td>
                     <a href="{{ url('/facturas') . '/' . $factura->id . '/edit' }}" class="btn btn-success">Editar</a>
+                    <a href="{{ route('facturalineas.factura', $factura->id) }}" class="btn btn-secondary">Ver Facturas</a>
 
                     <form action="{{ url('/facturas') . '/' . $factura->id }}" method="post" style="display:inline;">
                         @csrf

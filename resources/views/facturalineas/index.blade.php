@@ -68,7 +68,7 @@
         <tr>
             <td colspan="11">
                 <a href="{{ route('facturalineas.create') }}" class="btn btn-primary">Nueva</a>
-                <a href="{{ route('facturas.index', $facturalineas[0]->factura_id) }}" class="btn btn-secondary">Volver</a>
+                <a href="{{ route('facturas.index') }}" class="btn btn-secondary">Volver</a>
             </td>
         </tr>
     </tfoot>

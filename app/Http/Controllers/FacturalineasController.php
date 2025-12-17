@@ -121,6 +121,15 @@ class FacturalineasController extends Controller
     public function edit($id)
     {
         //
+        $facturalinea = Facturalinea::findOrFail($id);
+
+        $facturas = DB::table('facturas')
+                        ->selectRaw("concat(fecha, '_', id) as etiqueta, id")
+                        ->get();
+
+        $articulos = Articulo::all();
+
+        return view('facturalineas.edit', compact('facturalinea', 'facturas',  'articulos'));
     }
 
     /**
@@ -129,6 +138,30 @@ class FacturalineasController extends Controller
     public function update(Request $request, $id)
     {
         //
+        /*
+        En el update debemos de actualizar varias cosas:
+
+            Facturalineas
+        
+            Facturas 
+                - si se cambia de factura_id debemos de actualizar la vieja y la nueva
+
+            Articulos
+                - si se cambia la cantidad o se cambia de artículo, modificar stock de ambos
+
+            {
+                Previo a actualizar:
+                    - calcular el stock que se recupera al artículo viejo
+                    - comprobar que el nuevo stock en el artículo nuevo sea válido 
+                    (puede ser el mismo articulo que el viejo)
+
+                Postactualización:
+                    - recalcular factura nueva (base, importeiva, iva)
+                    - si factura nueva != factura vieja; recalcular también en vieja
+                    
+                redirigir al index de facturalinea/factura/factura_id
+            }
+        */
 
         $campos = [
             'factura_id'    => 'required|exists:facturas,id',
@@ -146,6 +179,38 @@ class FacturalineasController extends Controller
             'codigo.min'            => 'El código no puede ser menor que 0.',
             'cantidad.min'          => 'La cantidad no puede ser menor que 1.',
         ];
+
+        $this->validate($request, $campos, $mensajes);
+
+        // facturalinea
+        $facturalinea = Facturalinea::findOrFail($id);
+
+        $facturavieja = $facturalinea->factura;
+        $articuloviejo = $facturalinea->articulo;
+
+        $facturanueva = Factura::findOrFail($request->factura_id);
+        $articulonuevo = Articulo::findOrFail($request->articulo_id);
+        
+
+        // Comprobar si hay Stock suficiente
+        if ($articulonuevo->id != $articuloviejo->id)
+        {
+            if ($articulonuevo->cantidad < $request->cantidad)
+                return back()->withErrors(['cantidad' => 'No hay suficiente stock. Disponible: ' . $articulonuevo->cantidad])->withInput();
+        }
+        else
+        {
+            // Después de devolver producto
+            $cantidadPost = $articuloviejo->cantidad + $facturalinea->cantidad;
+            if ( $cantidadPost < $request->cantidad)
+        }
+
+        // Cantidad
+        $cantidad = $articuloviejo->cantidad + $facturalinea->cantidad;
+        
+        // Combrobar si
+
+
     }
 
     /**
@@ -154,6 +219,29 @@ class FacturalineasController extends Controller
     public function destroy($id)
     {
         //
+        // Ojo: que hay que restaurar el stock y recalcular los campos de factura 
+        $facturalinea = Facturalinea::findOrFail($id);
+
+        $factura_id = $facturalinea->factura_id;
+
+        $articulo = $facturalinea->articulo;
+        $factura = $facturalinea->factura;
+
+        // Restaura el stock
+        $articulo->cantidad += $facturalinea->cantidad;
+        $articulo->save();
+
+        // Actualiza la línea        
+        $facturalinea->delete();
+
+        // Actualiza los valores de la factura
+        $factura->base = $factura->facturalineas()->sum('base');
+        $factura->importeiva = $factura->facturalineas()->sum('importeiva');
+        $factura->importe = $factura->facturalineas()->sum('importe');
+        $factura->save();
+            
+        return redirect()->route('facturalineas.factura', $factura_id)
+                         ->with('mensaje', 'Línea eliminada y stock restaurado');
     }
 
     /**

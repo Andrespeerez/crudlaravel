@@ -11,6 +11,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ClientesController;
 use App\Http\Controllers\FacturasController;
+use App\Http\Controllers\ArticulosController;
 
 Route::get('/', function () {
     return view('auth.login');
@@ -22,6 +23,7 @@ Auth::routes();
 Route::resource('clientes', ClientesController::class)->middleware('auth');
 Route::get('/facturas/cliente/{id}', [FacturasController::class, 'facturascliente'])->middleware('auth');
 Route::resource('facturas', FacturasController::class)->middleware('auth');
+Route::resource('articulos', ArticulosController::class)->middleware('auth');
 
 Route::group(['middleware' => 'auth'], function() {
     Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

@@ -122,7 +122,7 @@ class ClientesController extends Controller
         {
             if ($cliente->logo)
             {
-                // Storage::delete($cliente->logo);
+                // Storage::delete($cliente->logo); // solo funciona si configuras el disk default como 'public'
                 Storage::disk('public')->delete($cliente->logo);
             }
 

@@ -30,7 +30,7 @@
 </div>
 
 
-<table class="table table-light">
+<table class="table table-light table-striped">
     <thead class="thead-light">
         <tr>
             <th>Id</th>

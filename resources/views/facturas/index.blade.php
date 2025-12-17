@@ -16,7 +16,7 @@
 </div>
 @endif
 
-<table class="table table-light">
+<table class="table table-light table-striped">
     <thead class="thead-light">
         <th>Id</th>
         <th>Número</th>

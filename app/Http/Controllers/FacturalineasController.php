@@ -190,27 +190,50 @@ class FacturalineasController extends Controller
 
         $facturanueva = Factura::findOrFail($request->factura_id);
         $articulonuevo = Articulo::findOrFail($request->articulo_id);
-        
 
         // Comprobar si hay Stock suficiente
-        if ($articulonuevo->id != $articuloviejo->id)
-        {
-            if ($articulonuevo->cantidad < $request->cantidad)
-                return back()->withErrors(['cantidad' => 'No hay suficiente stock. Disponible: ' . $articulonuevo->cantidad])->withInput();
-        }
-        else
-        {
-            // Después de devolver producto
-            $cantidadPost = $articuloviejo->cantidad + $facturalinea->cantidad;
-            if ( $cantidadPost < $request->cantidad)
-        }
+        $stockDisponibleEfectivo = ($articulonuevo->id == $articuloviejo->id) 
+                                 ? $articuloviejo->cantidad + $facturalinea->cantidad 
+                                 : $articulonuevo->cantidad;
 
-        // Cantidad
-        $cantidad = $articuloviejo->cantidad + $facturalinea->cantidad;
+        if ($stockDisponibleEfectivo < $request->cantidad) 
+            return back()->withErrors(['cantidad' => "Stock insuficiente. Disponible: $stockDisponibleEfectivo"])->withInput();
         
-        // Combrobar si
 
+        // Cambiamos los Stocks en artículos  
+        $articuloviejo->cantidad += $facturalinea->cantidad; // Devolvemos cantidad en viejo
+        $articuloviejo->save();
 
+        $articulonuevo->refresh(); 
+        $articulonuevo->cantidad -= $request->cantidad; // Quitamos cantidad en nuevo
+        $articulonuevo->save();
+
+        // Agregamos los cambios en FacturasLineas
+        $base       = $request->cantidad * $articulonuevo->precio;
+        $importeiva = $base * ($request->iva / 100);
+
+        $facturalinea->update([
+            'factura_id'  => $request->factura_id,
+            'articulo_id' => $request->articulo_id,
+            'codigo'      => $request->codigo,
+            'cantidad'    => $request->cantidad,
+            'iva'         => $request->iva,
+            'precio'      => $articulonuevo->precio,
+            'descripcion' => $articulonuevo->descripcion,
+            'base'        => $base,
+            'importeiva'  => $importeiva,
+            'importe'     => $base + $importeiva,
+        ]);
+
+        $this->recalcularTotalesFactura($facturanueva);
+        
+        // recalcula base importeiva importe post cambio en FacturaLineas
+        if ($facturanueva->id != $facturavieja->id)
+            $this->recalcularTotalesFactura($facturavieja);
+        
+
+        return redirect()->route('facturalineas.factura', $request->factura_id)
+                         ->with('mensaje', 'Línea modificada con éxito.');
     }
 
     /**
@@ -235,10 +258,7 @@ class FacturalineasController extends Controller
         $facturalinea->delete();
 
         // Actualiza los valores de la factura
-        $factura->base = $factura->facturalineas()->sum('base');
-        $factura->importeiva = $factura->facturalineas()->sum('importeiva');
-        $factura->importe = $factura->facturalineas()->sum('importe');
-        $factura->save();
+        $this->recalcularTotalesFactura($factura);
             
         return redirect()->route('facturalineas.factura', $factura_id)
                          ->with('mensaje', 'Línea eliminada y stock restaurado');
@@ -258,5 +278,16 @@ class FacturalineasController extends Controller
                             ->paginate(10);
         
         return view('facturalineas.index', compact('facturalineas'));
+    }
+
+    /**
+     * Función que recalcula los datos de la factura
+     */
+    private function recalcularTotalesFactura($factura)
+    {
+        $factura->base = $factura->facturalineas()->sum('base');
+        $factura->importeiva = $factura->facturalineas()->sum('importeiva');
+        $factura->importe = $factura->facturalineas()->sum('importe');
+        $factura->save();
     }
 }
